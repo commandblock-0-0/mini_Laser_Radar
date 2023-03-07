@@ -1,0 +1,67 @@
+menu "ESP-Radar"
+
+    menu "String_engine_Control"
+
+        config STRING_NUM
+            int "String engine Num"
+            range 1 5
+            default 2
+
+        config STRING_BASE_FREQUENCY
+            int "String engine base frequency (Hz)"
+            default  50
+        
+        config STRING_DUTY_RESOLUTION
+            int "String engine duty resolution (bit)"
+            default 13
+
+        config STRING_ANGLE_SCOPE
+            int "String engine angle scope (°)"
+            default 180
+
+        config STRING_DEFAULT_ANGLE
+            int "String engine default angle scope (°)"
+            default 0
+        
+        config STRING_MAX_HIGH_TIME
+            int "Maximum high level time (us)"
+            default 2500
+    
+        config STRING_MIN_HIGH_TIME
+            int "Minimum high level time (us)"
+            default 500
+        
+        config STRING_0_GPIO_NUM
+            int "String engine 1 gpio num"
+            range 1 45
+            default 5
+        
+        if (STRING_NUM >= 2)
+            config STRING_1_GPIO_NUM
+                int "String engine 2 gpio num"
+                range 1 45
+                default 6
+        endif
+
+        if (STRING_NUM >= 3)
+            config STRING_2_GPIO_NUM
+                int "String engine 3 gpio num"
+                range 1 45
+                default 7
+        endif
+
+        if (STRING_NUM >= 4)
+            config STRING_3_GPIO_NUM
+                int "String engine 4 gpio num"
+                range 1 45
+                default 8
+        endif
+
+        if (STRING_NUM >= 5)
+            config STRING_4_GPIO_NUM
+                int "String engine 5 gpio num"
+                range 1 45
+                default 9
+        endif
+    endmenu
+endmenu
