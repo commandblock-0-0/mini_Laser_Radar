@@ -6,41 +6,74 @@ menu "ESP-Radar"
             int "String engine Num"
             range 1 5
             default 2
+            help
+                Number of steering gear used
 
         config STRING_BASE_FREQUENCY
             int "String engine base frequency (Hz)"
+            range 1 50000000
             default  50
+            help
+                Base frequency of steering gear used
         
         config STRING_DUTY_RESOLUTION
             int "String engine duty resolution (bit)"
+            range 1 20
             default 13
+            help
+                PWM duty cycle resolution
+                The maximum value needs to be calculated
+                please refer to the relevant manual
 
         config STRING_ANGLE_SCOPE
             int "String engine angle scope (°)"
+            range 45 360
             default 180
+            help
+                Maximum angle of steering gear minus minimum angle
+                The program control considers zero as the minimum angle
 
         config STRING_DEFAULT_ANGLE
             int "String engine default angle scope (°)"
+            range 45 360
             default 0
+            help
+                Angle when the steering gear stops working
         
         config STRING_MAX_HIGH_TIME
             int "Maximum high level time (us)"
+            range 1 1000000
             default 2500
+            help
+                PWM high level time corresponding to the maximum angle of the steering gear
+                In fact, not all steering gear angles correspond to the same high level time
+                If the steering gear is not calibrated, please keep the default option
+                The program will provide calibration function(Wait for completion)
     
         config STRING_MIN_HIGH_TIME
             int "Minimum high level time (us)"
+            range 0 1000000
             default 500
+            help
+                PWM high level time corresponding to the minimum angle of the steering gear
+                In fact, not all steering gear angles correspond to the same high level time
+                If the steering gear is not calibrated, please keep the default option
+                The program will provide calibration function(Wait for completion)
         
         config STRING_0_GPIO_NUM
             int "String engine 1 gpio num"
             range 1 45
             default 5
+            help
+                Please refer to relevant manuals
         
         if (STRING_NUM >= 2)
             config STRING_1_GPIO_NUM
                 int "String engine 2 gpio num"
                 range 1 45
                 default 6
+                help
+                    Please refer to relevant manuals
         endif
 
         if (STRING_NUM >= 3)
@@ -48,6 +81,8 @@ menu "ESP-Radar"
                 int "String engine 3 gpio num"
                 range 1 45
                 default 7
+                help
+                    Please refer to relevant manuals
         endif
 
         if (STRING_NUM >= 4)
@@ -55,6 +90,8 @@ menu "ESP-Radar"
                 int "String engine 4 gpio num"
                 range 1 45
                 default 8
+                help
+                    Please refer to relevant manuals
         endif
 
         if (STRING_NUM >= 5)
@@ -62,6 +99,8 @@ menu "ESP-Radar"
                 int "String engine 5 gpio num"
                 range 1 45
                 default 9
+                help
+                    Please refer to relevant manuals
         endif
     endmenu
 endmenu

@@ -22,8 +22,9 @@ esp_err_t steering_init(ledc_timer_config_t *ledc_timer,
     ledc_timer->clk_cfg          = LEDC_AUTO_CLK;
     ESP_ERROR_CHECK(ledc_timer_config(ledc_timer));
 
-    //Prepare and then apply the LEDC PWM channel configuration
+    // Prepare and then apply the LEDC PWM channel configuration
     // change the configuration file if you want to set
+    // Use up to five steering gears
     if (iconfigcount)//string 1
     {
         config_arr[0].speed_mode    = LEDC_MODE;
