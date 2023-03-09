@@ -8,7 +8,7 @@ static float g_AngleBaseDutyNum;//Duty value corresponding to zero degree
 static float g_AngleMaxDutyNum;//Duty value corresponding to Max degree
 static float g_AngleStepLong;//Duty value corresponding to one degree
 
-esp_err_t steering_init(ledc_timer_config_t *ledc_timer, 
+void vSteering_init(ledc_timer_config_t *ledc_timer, 
                         ledc_channel_config_t *config_arr,
                         xSteering_arguments_t *Steering_arr)//arr no more than 5 item
 {
@@ -112,12 +112,10 @@ esp_err_t steering_init(ledc_timer_config_t *ledc_timer,
     g_AngleMaxDutyNum = (float)CONFIG_STRING_MAX_HIGH_TIME * (float)CONFIG_STRING_BASE_FREQUENCY  
                                 * (float)g_total_duty / (float)1000000; //Duty value corresponding to Max degree
     g_AngleStepLong = (g_AngleMaxDutyNum - g_AngleBaseDutyNum) / CONFIG_STRING_ANGLE_SCOPE; //Duty value corresponding to one degree
-
-    return ESP_OK;
 }
 
 /* Angle converted to duty value */
-static int AngleToDutyNum(const uint8_t angle)
+static int iAngleToDutyNum(const uint8_t angle)
 {
     int DutyNum;
 
@@ -129,18 +127,19 @@ static int AngleToDutyNum(const uint8_t angle)
     return DutyNum;
 }
 
-esp_err_t steering_ChangeAngle(xSteering_arguments_t *parguments, const uint8_t angle)
+//changing the PWM duty cycle by angle
+void vSteering_ChangeAngle(xSteering_arguments_t *parguments, const uint8_t angle)
 {
-    esp_err_t err;
     parguments->angle_now = angle;
 
-    err = ledc_set_duty(parguments->speedmode, parguments->channel, 
-                            AngleToDutyNum(parguments->angle_now));
-    if (err)
-        return err;
-    err = ledc_update_duty(parguments->speedmode, parguments->channel);
-    if (err)
-        return err;
-    
-    return ESP_OK;
+    ESP_ERROR_CHECK(ledc_set_duty(parguments->speedmode, parguments->channel, 
+                                    iAngleToDutyNum(parguments->angle_now)));
+    ESP_ERROR_CHECK(ledc_update_duty(parguments->speedmode, parguments->channel));
+}
+
+//changing the PWM duty cycle by dutyNum
+void vSteering_ChangeDutyNum(xSteering_arguments_t *parguments, const uint32_t duty)
+{
+    ESP_ERROR_CHECK(ledc_set_duty(parguments->speedmode, parguments->channel, duty));
+    ESP_ERROR_CHECK(ledc_update_duty(parguments->speedmode, parguments->channel));
 }

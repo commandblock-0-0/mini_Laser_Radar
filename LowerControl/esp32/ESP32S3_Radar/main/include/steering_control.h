@@ -16,9 +16,10 @@ typedef struct {
     ledc_mode_t speedmode;//pwm speed mode
 } xSteering_arguments_t;
 
-esp_err_t steering_init(ledc_timer_config_t *ledc_timer, 
+void vSteering_init(ledc_timer_config_t *ledc_timer, 
                         ledc_channel_config_t *config_arr,
                         xSteering_arguments_t *Steering_arr);//arr no more than 5 item
-esp_err_t steering_ChangeAngle(xSteering_arguments_t *parguments, const uint8_t angle);
+void vSteering_ChangeAngle(xSteering_arguments_t *parguments, const uint8_t angle);
+void vSteering_ChangeDutyNum(xSteering_arguments_t *parguments, const uint32_t duty);
 
 #endif 
