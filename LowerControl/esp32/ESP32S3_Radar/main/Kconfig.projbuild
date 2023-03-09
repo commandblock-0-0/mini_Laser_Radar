@@ -1,5 +1,7 @@
 menu "ESP-Radar"
 
+    orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
+
     menu "String_engine_Control"
 
         config STRING_NUM
@@ -33,35 +35,76 @@ menu "ESP-Radar"
         
         config STRING_0_GPIO_NUM
             int "String engine 1 gpio num"
-            range 1 45
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
             default 5
         
         if (STRING_NUM >= 2)
             config STRING_1_GPIO_NUM
                 int "String engine 2 gpio num"
-                range 1 45
+                range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
                 default 6
         endif
 
         if (STRING_NUM >= 3)
             config STRING_2_GPIO_NUM
                 int "String engine 3 gpio num"
-                range 1 45
+                range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
                 default 7
         endif
 
         if (STRING_NUM >= 4)
             config STRING_3_GPIO_NUM
                 int "String engine 4 gpio num"
-                range 1 45
+                range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
                 default 8
         endif
 
         if (STRING_NUM >= 5)
             config STRING_4_GPIO_NUM
                 int "String engine 5 gpio num"
-                range 1 45
+                range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
                 default 9
         endif
+    endmenu
+
+    menu "Radar UART Configuration"
+        config RADAR_UART_PORT_NUM
+            int "UART port number"
+            range 0 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+            default 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+            range 0 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+            default 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+            help
+                UART communication port number.
+                See UART documentation for available port numbers.
+    
+        config RADAR_UART_BAUD_RATE
+            int "UART communication speed"
+            range 1200 115200
+            default 115200
+            help
+                UART communication speed.
+    
+        config RADAR_UART_RXD
+            int "UART RXD pin number"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+            default 10
+            help
+                GPIO number for UART RX pin.
+    
+        config RADAR_UART_TXD
+            int "UART TXD pin number"
+            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+            default 11
+            help
+                GPIO number for UART TX pin. 
+    
+        config RADAR_TASK_STACK_SIZE
+            int "UART echo example task stack size"
+            range 1024 16384
+            default 2048
+            help
+                Defines stack size for UART
+                Insufficient stack size can cause crash
     endmenu
 endmenu
