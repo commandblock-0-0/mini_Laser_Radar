@@ -6,17 +6,23 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "radar_UART.h"
+#include "steering_control.h"
 
 #define RADAR_UART_NUM CONFIG_RADAR_UART_PORT_NUM
+#define RADAR_MAX_COMMAND_LEN 10
 
-static const char *TAG = "Radar_uart";
+static const char *TAG = "RadarUART";
 
 static void vRadar_UART_Device_Init(void);
 static void vRadar_UART_Device_Exit(void);
 
 static QueueHandle_t g_xRadar_uart_queue;
 static pRadar_UART_DataHand_t g_Radar_UART_DataHand = NULL;
-static uint8_t* g_pcDataBuff = NULL;
+static char* g_pcDataBuff = NULL;
+//static uint32_t Processingstatus = 0;// When the processing task function accepts commands to enter certain states, 
+                                     //this variable remembers those states
+static int32_t g_Command_code[RADAR_MAX_COMMAND_LEN + 1];// The commands sent are decoded into numbers string,
+                                    //The first number describes the number of instructions for this command
 
 static uart_config_t g_xRadar_uart_config = {
     .baud_rate  = CONFIG_RADAR_UART_BAUD_RATE,
@@ -46,7 +52,7 @@ static void vRadar_UART_Device_Init(void)
                             &g_xRadar_uart_Opr.uart_queue, 0));//Install Driver
     ESP_ERROR_CHECK(uart_pattern_queue_reset(RADAR_UART_NUM, 20));//Reset the pattern queue length to record at most 20 pattern positions.
 
-    ESP_LOGI(TAG, "UART Init done\n");
+    ESP_LOGI(TAG, "[Init done!]");
 }
 
 //exit function
@@ -74,7 +80,7 @@ static void Radar_uart_default_receive_task(void *pvParameters)
                 //Event of UART receving data
                 case UART_DATA:
                     uart_read_bytes(RADAR_UART_NUM, g_pcDataBuff, event.size, portMAX_DELAY);
-                    ESP_LOGI(TAG, "[Recv str]: %s", (const char*) g_pcDataBuff);
+                    ESP_LOGI(TAG, "[Recv str]: %s, [Len]: %d", (const char*) g_pcDataBuff, event.size);
                     (*g_Radar_UART_DataHand)(g_pcDataBuff, event.size);
                     break;
                 //Event of HW FIFO overflow detected
@@ -115,9 +121,85 @@ static void Radar_uart_default_receive_task(void *pvParameters)
     }
 }
 
-static void vpRadar_UART_default_DataHand(uint8_t* dtmp, size_t size)
+//Convert commands to numeric strings
+static void vCommandDecode(char* command)
 {
-    
+    /* All non-numbers parameters are converted to zero */
+    uint32_t count = 1;
+    char *token;
+    char *rest = command;
+    while ((token = strtok_r(NULL, " ", &rest)))
+    {
+        g_Command_code[count] = atoi(token);
+        count++;
+        if (count == (RADAR_MAX_COMMAND_LEN + 1))
+            break;
+    }
+    g_Command_code[0] = count - 1;// Number of instructions for this command
+}
+
+static void vRadar_enable_calibration(void)
+{
+    // <RADAR_MOD> <sreeringNum> <timeNum> <H/L>
+    if (g_Command_code[0] != 4)
+    {
+        ESP_LOGW(TAG, "wrong number of parameters !");
+        return;
+    }
+    if ((g_Command_code[2] <= 0) || (g_Command_code[2] > CONFIG_STEERING_NUM))
+    {
+        ESP_LOGW(TAG, "no this sreering engine !");
+        return;
+    }
+    if ((g_Command_code[3] <= 0) || (g_Command_code[3] > (1000000 / CONFIG_STEERING_BASE_FREQUENCY)))
+    {
+        ESP_LOGW(TAG, "timeNum wrong !");
+        return;
+    } 
+    if (g_Command_code[4] != 1 && g_Command_code[4] != 0)
+    {
+        ESP_LOGW(TAG, "Last parameter error of steering gear !");
+        return;
+    }
+    vSteering_Calibration(g_Command_code[2], g_Command_code[3], g_Command_code[4]);
+}
+
+static void vpRadar_UART_default_DataHand(char* command, size_t size)
+{
+    /*
+     *default function to process data
+     *the data sent should start with a command, followed by several data, separated by spaces :
+     *<command> [data 0] [data 1] ...
+     */
+    vCommandDecode(command);//convert commands to numeric strings
+
+    switch(g_Command_code[1]) { //Parse the first substring
+        // stop command
+        case RADAR_STOP:
+            ESP_LOGI(TAG, "Radar stop.");
+            // To suspend runningtask
+            break;
+        // run command
+        case RADAR_RUN:
+            ESP_LOGI(TAG, "Radar start.");
+            // To ready runningtask
+            break;
+        // choose mode command
+        case RADAR_MOD: 
+            ESP_LOGI(TAG, "Choose radar mode.");
+            // To suspend runningtask
+            break;
+        // start angle calibration command
+        case RADAR_ANGLE_CALIBRATION: 
+            // <RADAR_MOD> <sreeringNum> <timeNum> <H/L>
+            ESP_LOGI(TAG, "Radar calibration mode.");
+            vRadar_enable_calibration();
+            break;
+        // other
+        default:
+            ESP_LOGW(TAG, "Command is not available !");
+            break;
+    }
 }
 
 // Used by app 
@@ -127,7 +209,7 @@ xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task,
 {
     g_xRadar_uart_Opr.UART_Init();
 
-    g_pcDataBuff =(uint8_t*) malloc(RX_BUF_SIZE);
+    g_pcDataBuff =(char*) malloc(RX_BUF_SIZE);
     
     if (Radar_UART_DataHand)// can provide your own receive function,  if provide NULL, use the default function
         g_Radar_UART_DataHand = Radar_UART_DataHand;
@@ -140,6 +222,8 @@ xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task,
     else
         xTaskCreate(Radar_uart_default_receive_task, "radar_uart_event_task", CONFIG_RADAR_TASK_STACK_SIZE, 
                         NULL, 12, &(g_xRadar_uart_Opr.handle_receive_task));
+
+    ESP_LOGI(TAG, "[runing!]");
 
     return &g_xRadar_uart_Opr;
 }

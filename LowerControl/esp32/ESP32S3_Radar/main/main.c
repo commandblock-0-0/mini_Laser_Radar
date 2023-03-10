@@ -13,6 +13,7 @@
 static const char *TAG = "main";
 
 xSteering_manager_t* g_pxSteering_manager;
+xRadar_UART_t* g_xRadar_uart_Opr;
 
 void vSteering(void *data)
 {
@@ -45,20 +46,11 @@ void vSteering(void *data)
 
 void app_main(void)
 {
-    ESP_LOGI(TAG, "[here!]");
-
-    xRadar_UART_t* xRadar_uart_Opr;
+    ESP_LOGI(TAG, "[helloworld!]");
 
     g_pxSteering_manager = vSteering_init();
-
     xTaskCreate(vSteering, "SteeringTask", 2000, NULL, 5, NULL);
 
-    //UART test
-    xRadar_uart_Opr = radar_UART_Run(NULL, NULL);
-    char* test_str = "This is a test string.\n";
-    while (1)   
-    {
-        uart_write_bytes(xRadar_uart_Opr->uart_num, (const char*)test_str, strlen(test_str));
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
+    g_xRadar_uart_Opr = radar_UART_Run(NULL, NULL);
+    
 }
