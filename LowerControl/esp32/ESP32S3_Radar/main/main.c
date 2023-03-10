@@ -36,8 +36,8 @@ void vSteering(void *data)
             ESP_LOGI(TAG, "[loop!]");
         }
 
-        steering_ChangeAngle(&g_arrSteering_arguments[0], i);
-        steering_ChangeAngle(&g_arrSteering_arguments[1], i);
+        vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], i);
+        vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], i);
 
         vTaskDelay(100 / portTICK_PERIOD_MS);
     }
