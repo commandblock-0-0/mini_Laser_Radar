@@ -6,9 +6,9 @@
 #include "sdkconfig.h"
 #include "steering_control.h"
 
-static ledc_timer_config_t g_Steering_Timer;
-static ledc_channel_config_t g_arrSteering_Channels[5];
-static xSteering_arguments_t g_arrSteering_arguments[5];
+static const char *TAG = "main";
+
+xSteering_manager_t* g_pxSteering_manager;
 
 void vSteering(void *data)
 {
@@ -18,25 +18,32 @@ void vSteering(void *data)
     while (1)
     {
         if (status)
-            i++;
+            i += 20;
         else
-            i--;
+            i -= 20;
         
-        if (i == CONFIG_STRING_ANGLE_SCOPE || i == 0)
+        if (i >= CONFIG_STEERING_ANGLE_SCOPE || i <= 0)
+        {    
             status = !status;
+            if (i > CONFIG_STEERING_ANGLE_SCOPE)
+                i = CONFIG_STEERING_ANGLE_SCOPE;
+            if (i < 0)
+                i = 0;
+            ESP_LOGI(TAG, "[loop!]");
+        }
 
-        steering_ChangeAngle(&g_arrSteering_arguments[0], i);
-        steering_ChangeAngle(&g_arrSteering_arguments[1], i);
+        vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], i);
+        vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], i);
 
-        vTaskDelay(10 / portTICK_PERIOD_MS);
+        vTaskDelay(100 / portTICK_PERIOD_MS);
     }
 }
 
 void app_main(void)
 {
-    printf("here!\n");
+    ESP_LOGI(TAG, "[here!]");
 
-    steering_init(&g_Steering_Timer, g_arrSteering_Channels, g_arrSteering_arguments);
+    g_pxSteering_manager = vSteering_init();
 
     xTaskCreate(vSteering, "SteeringTask", 2000, NULL, 5, NULL);
 
