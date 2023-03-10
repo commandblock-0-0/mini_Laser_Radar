@@ -16,6 +16,7 @@ static void vRadar_UART_Device_Exit(void);
 
 static QueueHandle_t g_xRadar_uart_queue;
 static pRadar_UART_DataHand_t g_Radar_UART_DataHand = NULL;
+static uint8_t* g_pcDataBuff = NULL;
 
 static uart_config_t g_xRadar_uart_config = {
     .baud_rate  = CONFIG_RADAR_UART_BAUD_RATE,
@@ -54,6 +55,7 @@ static void vRadar_UART_Device_Exit(void)
 {
     vTaskDelete(g_xRadar_uart_Opr.handle_receive_task);
     ESP_ERROR_CHECK(uart_driver_delete(RADAR_UART_NUM));
+    free(g_pcDataBuff);
 }
 
 // event processing task
@@ -63,18 +65,17 @@ static void vRadar_UART_Device_Exit(void)
 static void Radar_uart_default_receive_task(void *pvParameters)
 {
     uart_event_t event;
-    uint8_t* dtmp = (uint8_t*) malloc(RX_BUF_SIZE);
     for(;;) {
         //Waiting for UART event.
         if(xQueueReceive(g_xRadar_uart_Opr.uart_queue, (void * )&event, (TickType_t)portMAX_DELAY)) {
-            bzero(dtmp, RX_BUF_SIZE);
+            bzero(g_pcDataBuff, RX_BUF_SIZE);
             ESP_LOGI(TAG, "uart[%d] event:", RADAR_UART_NUM);
             switch(event.type) {
                 //Event of UART receving data
                 case UART_DATA:
-                    ESP_LOGI(TAG, "[UART LEN]: %d", event.size);
-                    uart_read_bytes(RADAR_UART_NUM, dtmp, event.size, portMAX_DELAY);
-                    ESP_LOGI(TAG, "[Recv str]: %s", (const char*) dtmp);
+                    uart_read_bytes(RADAR_UART_NUM, g_pcDataBuff, event.size, portMAX_DELAY);
+                    ESP_LOGI(TAG, "[Recv str]: %s", (const char*) g_pcDataBuff);
+                    (*g_Radar_UART_DataHand)(g_pcDataBuff, event.size);
                     break;
                 //Event of HW FIFO overflow detected
                 case UART_FIFO_OVF:
@@ -112,15 +113,11 @@ static void Radar_uart_default_receive_task(void *pvParameters)
             }
         }
     }
-    free(dtmp);
-    dtmp = NULL;
-    vTaskDelete(NULL);
 }
 
-static void *vpRadar_UART_default_DataHand(uint8_t* dtmp, size_t size)
+static void vpRadar_UART_default_DataHand(uint8_t* dtmp, size_t size)
 {
     
-    return NULL;
 }
 
 // Used by app 
@@ -128,18 +125,21 @@ static void *vpRadar_UART_default_DataHand(uint8_t* dtmp, size_t size)
 xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task, 
                               pRadar_UART_DataHand_t Radar_UART_DataHand)
 {
-    esp_log_level_set(TAG, ESP_LOG_INFO);
     g_xRadar_uart_Opr.UART_Init();
+
+    g_pcDataBuff =(uint8_t*) malloc(RX_BUF_SIZE);
+    
+    if (Radar_UART_DataHand)// can provide your own receive function,  if provide NULL, use the default function
+        g_Radar_UART_DataHand = Radar_UART_DataHand;
+    else
+        g_Radar_UART_DataHand = vpRadar_UART_default_DataHand;
+
     if (UART_receive_task)// can provide your own receive task,  if provide NULL, use the default task
         xTaskCreate(UART_receive_task, "radar_uart_event_task", CONFIG_RADAR_TASK_STACK_SIZE, 
                         NULL, 12, &(g_xRadar_uart_Opr.handle_receive_task));
     else
         xTaskCreate(Radar_uart_default_receive_task, "radar_uart_event_task", CONFIG_RADAR_TASK_STACK_SIZE, 
                         NULL, 12, &(g_xRadar_uart_Opr.handle_receive_task));
-    if (Radar_UART_DataHand)// can provide your own receive function,  if provide NULL, use the default function
-        g_Radar_UART_DataHand = Radar_UART_DataHand;
-    else
-        g_Radar_UART_DataHand = vpRadar_UART_default_DataHand;
 
     return &g_xRadar_uart_Opr;
 }

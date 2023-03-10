@@ -7,7 +7,7 @@
 #define RX_BUF_SIZE 1024
 #define TX_BUF_SIZE 1024
 
-typedef void*(* pRadar_UART_DataHand_t)(uint8_t* dtmp, size_t size);
+typedef void(* pRadar_UART_DataHand_t)(uint8_t* dtmp, size_t size);
 
 typedef struct {
     uart_port_t uart_num;        //uart num
