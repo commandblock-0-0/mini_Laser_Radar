@@ -24,13 +24,14 @@ typedef struct {
 } xSteering_arguments_t;
 
 typedef struct {
-    uint8_t steeringNum;
+    uint32_t steeringNum;
     ledc_timer_config_t *pPWM_timer;
     ledc_channel_config_t *config_arr;
     xSteering_arguments_t *steering_arr;
 } xSteering_manager_t;
 
 xSteering_manager_t* vSteering_init(void);
+xSteering_arguments_t* xSteering_GetArgumentbyNum(uint32_t steeringNum);
 void vSteering_DefaultAngle(void);
 void vSteering_ChangeAngle(xSteering_arguments_t *parguments, const uint32_t angle);
 void vSteering_ChangeDutyNum(xSteering_arguments_t *parguments, const uint32_t duty);

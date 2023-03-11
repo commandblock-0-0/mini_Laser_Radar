@@ -153,6 +153,11 @@ xSteering_manager_t* vSteering_init(void)
 
     return &g_xSteering_manager;
 }
+// return argument by steering number
+xSteering_arguments_t* xSteering_GetArgumentbyNum(uint32_t steeringNum)
+{
+    return &g_xSteering_manager.steering_arr[steeringNum - 1];
+}
 
 /* Angle converted to duty value */
 static uint32_t iAngleToDutyNum(xSteering_arguments_t *parguments, const uint32_t angle)
@@ -192,7 +197,6 @@ void vSteering_DefaultAngle(void)
     ESP_LOGI(TAG, "[default angle!]");
 }
 
-
 void vSteering_Calibration(const uint32_t sreeringname, const uint32_t timeNum, const bool High_or_Low)
 {
     vSteering_DefaultAngle();
@@ -207,6 +211,5 @@ void vSteering_Calibration(const uint32_t sreeringname, const uint32_t timeNum, 
         vSteering_Highlevel_updata(sreeringname, NULL, &timeNum);
         vSteering_ChangeAngle(&g_xSteering_manager.steering_arr[sreeringname - 1], 0);
     }
-    
-    
+    ESP_LOGI(TAG, "[Calibration set!]");
 }

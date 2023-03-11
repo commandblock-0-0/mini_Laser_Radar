@@ -104,38 +104,6 @@ menu "ESP-Radar"
             range 0 1000000
             default 500
         
-        config STRING_0_GPIO_NUM
-            int "String engine 1 gpio num"
-            range 1 45
-            default 5
-        
-        if (STRING_NUM >= 2)
-            config STRING_1_GPIO_NUM
-                int "String engine 2 gpio num"
-                range 1 45
-                default 6
-        endif
-
-        if (STRING_NUM >= 3)
-            config STRING_2_GPIO_NUM
-                int "String engine 3 gpio num"
-                range 1 45
-                default 7
-        endif
-
-        if (STRING_NUM >= 4)
-            config STRING_3_GPIO_NUM
-                int "String engine 4 gpio num"
-                range 1 45
-                default 8
-        endif
-
-        if (STRING_NUM >= 5)
-            config STRING_4_GPIO_NUM
-                int "String engine 5 gpio num"
-                range 1 45
-                default 9
-        endif
     endmenu
 
     menu "Radar UART Configuration"

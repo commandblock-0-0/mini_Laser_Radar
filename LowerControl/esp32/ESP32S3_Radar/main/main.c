@@ -7,40 +7,62 @@
 #include "driver/ledc.h"
 #include "driver/uart.h"
 #include "sdkconfig.h"
-#include "steering_control.h"
+#include "radar_manager.h"
 #include "radar_UART.h"
+#include "steering_control.h"
 
 static const char *TAG = "main";
 
 xSteering_manager_t* g_pxSteering_manager;
 xRadar_UART_t* g_xRadar_uart_Opr;
 
-void vSteering(void *data)
+void RadarMainTask(void *data)
 {
-    int i = 0;
-    bool status = true;
-
+    int32_t angle = 0;
+    *((int32_t**)data) = &angle;
+    uint32_t task_status = TASK_RESET;
+    bool steering_status = true;
+    vTaskSuspend(NULL);
+    vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], 0);
+    vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], 0);
+    vTaskDelay(2000 / portTICK_PERIOD_MS);
+    // Use the notification value to manage the status of the task
     while (1)
     {
-        if (status)
-            i += 20;
-        else
-            i -= 20;
-        
-        if (i >= CONFIG_STEERING_ANGLE_SCOPE || i <= 0)
-        {    
-            status = !status;
-            if (i > CONFIG_STEERING_ANGLE_SCOPE)
-                i = CONFIG_STEERING_ANGLE_SCOPE;
-            if (i < 0)
-                i = 0;
-            ESP_LOGI(TAG, "[loop!]");
+        xTaskNotifyWait(0, 0, &task_status, 0);
+        if (task_status == TASK_RESET)// task reset
+        {
+            angle = 0;
+            steering_status = true;
+            vTaskSuspend(NULL);
+            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], 0);
+            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], 0);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
         }
+        if (task_status == TASK_SUSPEND)
+            vTaskSuspend(NULL);
+        if (task_status == TASK_RUN)
+        {
+            if (steering_status)
+                angle += 5;
+            else
+                angle -= 5;
 
-        vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], i);
-        vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], i);
+            if (angle >= CONFIG_STEERING_ANGLE_SCOPE || angle <= 0)
+            {    
+                steering_status = !steering_status;
+                if (angle > CONFIG_STEERING_ANGLE_SCOPE)
+                    angle = CONFIG_STEERING_ANGLE_SCOPE;
+                if (angle < 0)
+                    angle = 0;
+                ESP_LOGI(TAG, "[loop!]");
+            }
 
-        vTaskDelay(100 / portTICK_PERIOD_MS);
+            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], angle);
+            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], angle);
+
+            vTaskDelay(30 / portTICK_PERIOD_MS);
+        }
     }
 }
 
@@ -49,8 +71,8 @@ void app_main(void)
     ESP_LOGI(TAG, "[helloworld!]");
 
     g_pxSteering_manager = vSteering_init();
-    xTaskCreate(vSteering, "SteeringTask", 2000, NULL, 5, NULL);
 
     g_xRadar_uart_Opr = radar_UART_Run(NULL, NULL);
-    
+
+    pRadarManager_task_Create(RadarMainTask);
 }

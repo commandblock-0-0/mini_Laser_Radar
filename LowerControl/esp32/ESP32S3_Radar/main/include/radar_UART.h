@@ -6,12 +6,15 @@
 
 #define RX_BUF_SIZE 1024
 #define TX_BUF_SIZE 1024
+#define RADAR_MAX_COMMAND_LEN 10
 
 typedef enum {
-    RADAR_STOP = 1,
+    RADAR_SUSPEND = 1,//radar does not reset the status and stops working 
     RADAR_RUN,
-    RADAR_MOD,
+    RADAR_MOD,  //change radar work mode
     RADAR_ANGLE_CALIBRATION,// The angle of each steering gear may be different. This command opens the calibration mode
+    RADAR_RESET, //stops and status
+    SPECIFY_ANGLE,//specify the angle of a single steering gear
 } Radar_uart_command_t;
 
 typedef struct {
