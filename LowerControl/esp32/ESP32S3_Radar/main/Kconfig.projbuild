@@ -2,148 +2,158 @@ menu "ESP-Radar"
 
     orsource "$IDF_PATH/examples/common_components/env_caps/$IDF_TARGET/Kconfig.env_caps"
 
-    menu "Steering engine Control"
-
-        config STEERING_NUM
-            int "Steering engine Num"
-            range 1 5
-            default 2
-            help
-                Number of steering gear used
-        
-        menu "Steering engine GPIO"
-
-                config STEERING_0_GPIO_NUM
-                    int "Steering engine 1 gpio num"
-                    range 1 45
-                    default 5
-                    help
-                        Please refer to relevant manuals
-                
-                if (STEERING_NUM >= 2)
-                    config STEERING_1_GPIO_NUM
-                        int "Steering engine 2 gpio num"
-                        range 1 45
-                        default 6
-                        help
-                            Please refer to relevant manuals
-                endif
-        
-                if (STEERING_NUM >= 3)
-                    config STEERING_2_GPIO_NUM
-                        int "Steering engine 3 gpio num"
-                        range 1 45
-                        default 7
-                        help
-                            Please refer to relevant manuals
-                endif
-        
-                if (STEERING_NUM >= 4)
-                    config STEERING_3_GPIO_NUM
-                        int "Steering engine 4 gpio num"
-                        range 1 45
-                        default 8
-                        help
-                            Please refer to relevant manuals
-                endif
-        
-                if (STEERING_NUM >= 5)
-                    config STEERING_4_GPIO_NUM
-                        int "Steering engine 5 gpio num"
-                        range 1 45
-                        default 9
-                        help
-                            Please refer to relevant manuals
-                endif
-                
-        endmenu
-
-        config STEERING_BASE_FREQUENCY
-            int "Steering engine base frequency (Hz)"
-            range 1 50000000
-            default  50
-            help
-                Base frequency of steering gear used
-        
-        config STEERING_DUTY_RESOLUTION
-            int "Steering engine duty resolution (bit)"
-            range 1 20
-            default 13
-            help
-                PWM duty cycle resolution
-                The maximum value needs to be calculated
-                please refer to the relevant manual
-
-        config STEERING_ANGLE_SCOPE
-            int "Steering engine angle scope (°)"
-            range 45 360
-            default 180
-            help
-                Maximum angle of steering gear minus minimum angle
-                The program control considers zero as the minimum angle
-
-        config STEERING_DEFAULT_ANGLE
-            int "Steering engine default angle scope (°)"
-            range 45 360
-            default 0
-            help
-                Angle when the steering gear stops working
-        
-        config STEERING_MAX_HIGH_TIME
-            int "Maximum high level time (us)"
-            range 1 1000000
-            default 2500
-            help
-                PWM high level time corresponding to the maximum angle of the steering gear
-                In fact, not all steering gear angles correspond to the same high level time
-                If the steering gear is not calibrated, please keep the default option
-                The program will provide calibration function(Wait for completion)
-    
-        config STEERING_MIN_HIGH_TIME
-            int "Minimum high level time (us)"
-            range 0 1000000
-            default 500
-        
-    endmenu
-
     menu "Radar UART Configuration"
-        config RADAR_UART_PORT_NUM
-            int "UART port number"
-            range 0 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
-            default 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
-            range 0 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
-            default 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
-            help
-                UART communication port number.
-                See UART documentation for available port numbers.
-    
-        config RADAR_UART_BAUD_RATE
-            int "UART communication speed"
-            range 1200 115200
-            default 115200
-            help
-                UART communication speed.
-    
-        config RADAR_UART_RXD
-            int "UART RXD pin number"
-            range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
-            default 10
-            help
-                GPIO number for UART RX pin.
-    
-        config RADAR_UART_TXD
-            int "UART TXD pin number"
-            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
-            default 11
-            help
-                GPIO number for UART TX pin. 
-    
-        config RADAR_TASK_STACK_SIZE
-            int "UART echo example task stack size"
-            range 1024 16384
-            default 2048
-            help
-                Defines stack size for UART
-                Insufficient stack size can cause crash
+
+        menuconfig RADAR_USING_UART0
+            bool "Enable UART0"
+            default y
+            if RADAR_USING_UART0
+                
+                config RADAR_UART0_PORT_NUM
+                    int "UART0 port number"
+                    depends on RADAR_USING_UART0
+                    range 0 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                    default 0 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                    range 0 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+                    default 0 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+                    help
+                        UART0 communication port number for the example.
+                        See UART0 documentation for available port numbers.
+
+                config RADAR_UART0_BAUD_RATE
+                    int "UART0 communication speed"
+                    range 1200 115200
+                    depends on RADAR_USING_UART1
+                    default 115200
+                    help
+                        UART0 communication speed.
+                
+                config RADAR_UART0_RXD
+                    int "UART0 RXD pin number"
+                    range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+                    depends on RADAR_USING_UART0
+                    default 45
+                    help
+                        GPIO number for UART0 RX pin.
+            
+                config RADAR_UART0_TXD
+                    int "UART0 TXD pin number"
+                    range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+                    depends on RADAR_USING_UART0
+                    default 46
+                    help
+                        GPIO number for UART0 TX pin. 
+            
+                config RADAR_UART0_TASK_STACK_SIZE
+                    int "UART0 echo example task stack size"
+                    range 1024 16384
+                    depends on RADAR_USING_UART0
+                    default 2048
+                    help
+                        Defines stack size for UART0
+                        Insufficient stack size can cause crash
+            endif
+            
+        menuconfig RADAR_USING_UART1
+            bool "Enable UART1"
+            default y
+            if RADAR_USING_UART1
+
+                config RADAR_UART1_PORT_NUM
+                    int "UART1 port number"
+                    depends on RADAR_USING_UART1
+                    range 0 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                    default 1 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                    range 0 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+                    default 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+                    help
+                        UART1 communication port number for the example.
+                        See UART1 documentation for available port numbers.
+
+                config RADAR_UART1_BAUD_RATE
+                    int "UART1 communication speed"
+                    range 1200 115200
+                    depends on RADAR_USING_UART1
+                    default 115200
+                    help
+                        UART1 communication speed.
+                    
+                config RADAR_UART1_RXD
+                    int "UART1 RXD pin number"
+                    range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+                    depends on RADAR_USING_UART1
+                    default 41
+                    help
+                        GPIO number for UART1 RX pin.
+                    
+                config RADAR_UART1_TXD
+                    int "UART1 TXD pin number"
+                    range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+                    depends on RADAR_USING_UART1
+                    default 42
+                    help
+                        GPIO number for UART1 TX pin. 
+                    
+                config RADAR_UART1_TASK_STACK_SIZE
+                    int "UART1 echo example task stack size"
+                    range 1024 16384
+                    depends on RADAR_USING_UART1
+                    default 2048
+                    help
+                        Defines stack size for UART1
+                        Insufficient stack size can cause crash
+            endif
+            
+            if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                menuconfig RADAR_USING_UART2
+                    bool "Enable UART2"
+                    default y
+                    if RADAR_USING_UART2
+
+                        config RADAR_UART2_PORT_NUM
+                            int "UART2 port number"
+                            depends on RADAR_USING_UART2
+                            range 0 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                            default 2 if IDF_TARGET_ESP32 || IDF_TARGET_ESP32S3
+                            range 0 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+                            default 1 if IDF_TARGET_ESP32S2 || IDF_TARGET_ESP32C3 || IDF_TARGET_ESP32C2 || IDF_TARGET_ESP32H2
+                            help
+                                UART2 communication port number for the example.
+                                See UART2 documentation for available port numbers.
+                            
+                        config RADAR_UART2_BAUD_RATE
+                            int "UART2 communication speed"
+                            range 1200 115200
+                            depends on RADAR_USING_UART2
+                            default 115200
+                            help
+                                UART2 communication speed.
+                            
+                        config RADAR_UART2_RXD
+                            int "UART2 RXD pin number"
+                            range ENV_GPIO_RANGE_MIN ENV_GPIO_IN_RANGE_MAX
+                            depends on RADAR_USING_UART2
+                            default 15
+                            help
+                                GPIO number for UART2 RX pin.
+                            
+                        config RADAR_UART2_TXD
+                            int "UART2 TXD pin number"
+                            range ENV_GPIO_RANGE_MIN ENV_GPIO_OUT_RANGE_MAX
+                            depends on RADAR_USING_UART2
+                            default 16
+                            help
+                                GPIO number for UART2 TX pin. 
+                            
+                        config RADAR_UART2_TASK_STACK_SIZE
+                            int "UART2 echo example task stack size"
+                            range 1024 16384
+                            depends on RADAR_USING_UART2
+                            default 2048
+                            help
+                                Defines stack size for UART2
+                                Insufficient stack size can cause crash
+                    endif
+            endif
     endmenu
 endmenu

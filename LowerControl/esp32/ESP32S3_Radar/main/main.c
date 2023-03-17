@@ -6,9 +6,11 @@
 #include "esp_log.h"
 #include "driver/ledc.h"
 #include "driver/uart.h"
+#include "driver/i2c.h"
+#include "WIFI.h"
 #include "sdkconfig.h"
 #include "radar_manager.h"
-#include "radar_UART.h"
+#include "uart.h"
 #include "steering_control.h"
 
 static const char *TAG = "main";
@@ -70,9 +72,12 @@ void app_main(void)
 {
     ESP_LOGI(TAG, "[helloworld!]");
 
+    if (wifi_init_sta() == ESP_OK)
+        xTaskCreatePinnedToCore(udp_client_task, "udp_client_task", 4096, NULL, 12, NULL, 0);
+
     g_pxSteering_manager = vSteering_init();
 
     g_xRadar_uart_Opr = radar_UART_Run(NULL, NULL);
 
-    pRadarManager_task_Create(RadarMainTask);
+
 }

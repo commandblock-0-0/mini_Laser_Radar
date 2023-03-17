@@ -2,6 +2,7 @@
 #define _RADAR_MANAGER_H_
 
 #include <stdio.h>
+#include "freertos/FreeRTOS.h"
 #include "sdkconfig.h"
 
 #define RADAR_TASK_PRIORITY 0
@@ -23,7 +24,7 @@ TaskHandle_t* pRadarManager_Task_get(void);
 void vRadarManager_Task_Suspend(void);
 void vRadarManager_Task_run(void);
 void vRadarManager_Task_Stop(void);
-void vRadarManager_enable_calibration(int32_t* command_code);
-void vRadarManager_Specify_Angle(int32_t* command_code);
+void vRadarManager_enable_calibration(uart_port_t uart_num, int32_t* command_code);
+void vRadarManager_Specify_Angle(uart_port_t uart_num, int32_t* command_code);
 
 #endif

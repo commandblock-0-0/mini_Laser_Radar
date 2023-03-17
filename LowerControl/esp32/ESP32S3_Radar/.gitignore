@@ -4,3 +4,4 @@ sdkconfig.old
 .vscode/
 .devcontainer/
 .gitignore
+dependencies.lock

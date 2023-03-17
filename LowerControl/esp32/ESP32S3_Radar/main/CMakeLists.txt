@@ -1,2 +1,10 @@
-idf_component_register(SRCS "radar_UART_manager.c" "steering_control.c" "radar_manager.c" "main.c"
-                    INCLUDE_DIRS "include")
+idf_component_register(SRCS "main.c"
+                            
+                            "uart_task/uart.c"
+                            "uart_task/uart_task.c"
+
+                            "input_task/radar_manager.c"
+
+                       INCLUDE_DIRS "uart_task"
+                                    "input_task"
+                                    )

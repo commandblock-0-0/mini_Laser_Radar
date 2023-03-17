@@ -8,6 +8,8 @@
 #define TX_BUF_SIZE 1024
 #define RADAR_MAX_COMMAND_LEN 10
 
+typedef void(* pRadar_UART_DataHand_t)(const uart_port_t uart_num, char* dtmp, size_t size);
+
 typedef enum {
     RADAR_SUSPEND = 1,//radar does not reset the status and stops working 
     RADAR_RUN,
@@ -17,20 +19,25 @@ typedef enum {
     SPECIFY_ANGLE,//specify the angle of a single steering gear
 } Radar_uart_command_t;
 
-typedef struct {
+//defined UART itself 
+typedef struct xRadar_UART_t{
     uart_port_t uart_num;        //uart num
-    uart_config_t *pUart_config; //uart config, most configurations come from Kconfig
-    QueueHandle_t uart_queue;    //Interrupt event queue
+    uart_config_t Uart_config; //uart config, most configurations come from Kconfig
+    QueueHandle_t* pUart_queue;    //Interrupt event queue
+    uint32_t usStackDepth;     //task stack depth
+    int tx_io_num;
+    int rx_io_num;
 
-    void(* UART_Init)(void); //init function
-    void(* UART_Exit)(void); //exit function
+    esp_err_t(* UART_Exit)(uart_port_t); //exit function
 
+    pRadar_UART_DataHand_t DateHand_fun; //
     TaskHandle_t handle_receive_task;//uart event task handle
-} xRadar_UART_t;//defined UART itself 
 
-typedef void(* pRadar_UART_DataHand_t)(char* dtmp, size_t size);
+    struct xRadar_UART_t* ptNext;
+} xRadar_UART_t;
 
 
+void Radar_uart_default_receive_task(void *pvParameters);
 xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task, 
                               pRadar_UART_DataHand_t Radar_UART_DataHand);
 

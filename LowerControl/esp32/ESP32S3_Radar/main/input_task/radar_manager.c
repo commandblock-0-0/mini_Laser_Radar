@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "radar_manager.h"
-#include "radar_UART.h"
+#include "uart.h"
 #include "steering_control.h"
 
 static const char* TAG = "RadarManager";
@@ -60,7 +60,7 @@ void vRadarManager_Task_Stop(void)
 }
 
 //Specify the angle of a single steering gear
-void vRadarManager_Specify_Angle(int32_t* command_code)
+void vRadarManager_Specify_Angle(uart_port_t uart_num, int32_t* command_code)
 {
     char* str;
     // <RADAR_MOD> <sreeringNum> <angle>
@@ -68,34 +68,34 @@ void vRadarManager_Specify_Angle(int32_t* command_code)
     {
         ESP_LOGW(TAG, "wrong number of parameters !");
         str = "wrong number of parameters !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     }
     if ((command_code[2] <= 0) || (command_code[2] > CONFIG_STEERING_NUM))
     {
         ESP_LOGW(TAG, "no this sreering engine !");
         str = "no this sreering engine !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     }
     if ( (command_code[3] < 0) || (command_code[3]) > CONFIG_STEERING_ANGLE_SCOPE )
     {
         ESP_LOGW(TAG, "wrong angle !");
         str = "wrong angle !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     }
     vRadarManager_Task_Suspend();
     *g_pAngleinTask = command_code[3];
     vSteering_ChangeAngle(xSteering_GetArgumentbyNum(command_code[2]), command_code[3]);
     str = "angle change !\n";
-    uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+    uart_write_bytes(uart_num, str, strlen(str));
 }
 
 //After judging the calibration mode in UART
 //check whether the remaining parameters are correct
 //try to start the calibration mode in steering
-void vRadarManager_enable_calibration(int32_t* command_code)
+void vRadarManager_enable_calibration(uart_port_t uart_num, int32_t* command_code)
 {
     char* str;
     // <RADAR_MOD> <sreeringNum> <timeNum> <H/L>
@@ -103,32 +103,32 @@ void vRadarManager_enable_calibration(int32_t* command_code)
     {
         ESP_LOGW(TAG, "wrong number of parameters !");
         str = "wrong number of parameters !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     }
     if ((command_code[2] <= 0) || (command_code[2] > CONFIG_STEERING_NUM))
     {
         ESP_LOGW(TAG, "no this sreering engine !");
         str = "no this sreering engine !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     }
     if ((command_code[3] <= 0) || (command_code[3] > (1000000 / CONFIG_STEERING_BASE_FREQUENCY)))
     {
         ESP_LOGW(TAG, "timeNum wrong !");
         str = "timeNum wrong !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     } 
     if (command_code[4] != 1 && command_code[4] != 0)
     {
         ESP_LOGW(TAG, "last parameter error of steering gear !");
         str = "last parameter error of steering gear !\n";
-        uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+        uart_write_bytes(uart_num, str, strlen(str));
         return;
     }
     vRadarManager_Task_Suspend();
     vSteering_Calibration(command_code[2], command_code[3], command_code[4]);
     str = "Calibration done !\n";
-    uart_write_bytes(CONFIG_RADAR_UART_PORT_NUM, str, strlen(str));
+    uart_write_bytes(uart_num, str, strlen(str));
 }
