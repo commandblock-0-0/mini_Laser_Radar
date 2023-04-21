@@ -5,9 +5,10 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 
-#include "uart.h"
+#include "radar_uart.h"
 
 static const char *TAG = "RadarUART";
+static uint8_t pcDataBuff[RX_BUF_SIZE] = {0};
 
 // event processing task
 // created by default when the app calls the run function
@@ -17,7 +18,6 @@ void Radar_uart_default_receive_task(void *pxRadar_uart_Opr)
 {
     const xRadar_UART_t* const pxUart_Opr = (xRadar_UART_t*)pxRadar_uart_Opr;
     uart_event_t event;
-    char* pcDataBuff =(char*) malloc(RX_BUF_SIZE);
     for(;;) {
         bzero(pcDataBuff, RX_BUF_SIZE);
         //Waiting for UART event.
@@ -28,7 +28,7 @@ void Radar_uart_default_receive_task(void *pxRadar_uart_Opr)
                 case UART_DATA:
                     uart_read_bytes(pxUart_Opr->uart_num, pcDataBuff, event.size, portMAX_DELAY);
                     ESP_LOGI(TAG, "[Recv str]: %s, [Len]: %d", (const char*) pcDataBuff, event.size);
-                    (pxUart_Opr->DateHand_fun)((pxUart_Opr->uart_num), pcDataBuff, event.size);
+                    (pxUart_Opr->DateHand_fun)((pxUart_Opr->uart_num), pcDataBuff, event.size);//Execute the corresponding processing function
                     break;
                 //Event of HW FIFO overflow detected
                 case UART_FIFO_OVF:

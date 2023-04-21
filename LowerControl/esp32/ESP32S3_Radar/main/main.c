@@ -10,74 +10,42 @@
 #include "WIFI.h"
 #include "sdkconfig.h"
 #include "radar_manager.h"
-#include "uart.h"
+#include "radar_uart.h"
 #include "steering_control.h"
+#include "atk_ms53l0m.h"
 
 static const char *TAG = "main";
 
-xSteering_manager_t* g_pxSteering_manager;
-xRadar_UART_t* g_xRadar_uart_Opr;
-
-void RadarMainTask(void *data)
-{
-    int32_t angle = 0;
-    *((int32_t**)data) = &angle;
-    uint32_t task_status = TASK_RESET;
-    bool steering_status = true;
-    vTaskSuspend(NULL);
-    vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], 0);
-    vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], 0);
-    vTaskDelay(2000 / portTICK_PERIOD_MS);
-    // Use the notification value to manage the status of the task
-    while (1)
-    {
-        xTaskNotifyWait(0, 0, &task_status, 0);
-        if (task_status == TASK_RESET)// task reset
-        {
-            angle = 0;
-            steering_status = true;
-            vTaskSuspend(NULL);
-            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], 0);
-            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], 0);
-            vTaskDelay(1000 / portTICK_PERIOD_MS);
-        }
-        if (task_status == TASK_SUSPEND)
-            vTaskSuspend(NULL);
-        if (task_status == TASK_RUN)
-        {
-            if (steering_status)
-                angle += 5;
-            else
-                angle -= 5;
-
-            if (angle >= CONFIG_STEERING_ANGLE_SCOPE || angle <= 0)
-            {    
-                steering_status = !steering_status;
-                if (angle > CONFIG_STEERING_ANGLE_SCOPE)
-                    angle = CONFIG_STEERING_ANGLE_SCOPE;
-                if (angle < 0)
-                    angle = 0;
-                ESP_LOGI(TAG, "[loop!]");
-            }
-
-            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[0], angle);
-            vSteering_ChangeAngle(&g_pxSteering_manager->steering_arr[1], angle);
-
-            vTaskDelay(30 / portTICK_PERIOD_MS);
-        }
-    }
-}
+//xSteering_manager_t* g_pxSteering_manager;
+//xRadar_UART_t* g_xRadar_uart_Opr;
 
 void app_main(void)
 {
     ESP_LOGI(TAG, "[helloworld!]");
 
-    if (wifi_init_sta() == ESP_OK)
-        xTaskCreatePinnedToCore(udp_client_task, "udp_client_task", 4096, NULL, 12, NULL, 0);
+    //uint8_t ret;
+    //uint16_t atk_ms53l0m_addr, dat;
 
-    g_pxSteering_manager = vSteering_init();
+    //xTaskCreatePinnedToCore(udp_client_task, "udp_client_task", 4096, NULL, 0, NULL, 0);
+    //g_pxSteering_manager = vSteering_init();
+    //ret = atk_ms53l0m_init(1, &atk_ms53l0m_addr);
+    //if (ret != ATK_MS53L0M_EOK)
+    //    ESP_LOGW(TAG,"atk_ms53l0m init error num:%d!",ret);
+    //else
+    //{
+    //    ESP_LOGI(TAG,"atk_ms53l0m init done!");
+    //    while (1)
+    //    {
+    //        ret = atk_ms53l0m_modbus_get_data(atk_ms53l0m_addr, &dat);
+    //        if (ret != ATK_MS53L0M_EOK)
+    //            ESP_LOGW(TAG,"atk_ms53l0m get data error!");
+    //        else
+    //            ESP_LOGI(TAG, "d: %d", dat);
 
-    g_xRadar_uart_Opr = radar_UART_Run(NULL, NULL);
+    //        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    //    }
+    //}
 
-
+    Radar_manager_init();
+    vTaskDelete(NULL);
 }

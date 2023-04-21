@@ -18,7 +18,7 @@
 #include "WIFI.h"
 
 #if defined(CONFIG_EXAMPLE_IPV4)
-#define HOST_IP_ADDR "192.168.137.1" //CONFIG_EXAMPLE_IPV4_ADDR
+#define HOST_IP_ADDR CONFIG_EXAMPLE_IPV4_ADDR //"192.168.137.1"
 #elif defined(CONFIG_EXAMPLE_IPV6)
 #define HOST_IP_ADDR CONFIG_EXAMPLE_IPV6_ADDR
 #else
@@ -30,8 +30,16 @@
 static const char *TAG = "UDP";
 static const char *payload = "Hello ! ";
 
+// 
 void udp_client_task(void *pvParameters)
 {
+    if (wifi_init_sta() == ESP_OK) {
+        ESP_LOGI(TAG, "WIFI Connent !");
+    } else {
+        ESP_LOGW(TAG, "WIFI Connent Fail!");
+        vTaskDelete(NULL);
+    }
+
     char rx_buffer[128];
     char host_ip[] = HOST_IP_ADDR;
     int addr_family = 0;

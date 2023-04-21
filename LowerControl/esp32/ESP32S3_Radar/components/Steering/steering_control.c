@@ -11,8 +11,8 @@
 
 static const char *TAG = "SteeringControl";
 
-static ledc_channel_config_t g_Config_arr[STEERING_NUM];
-static xSteering_arguments_t g_Steering_arr[STEERING_NUM];
+static ledc_channel_config_t g_Config_arr[STEERING_NUM] = {0};
+static xSteering_arguments_t g_Steering_arr[STEERING_NUM] = {0};
 
 static ledc_timer_config_t g_PWM_timer = { // config ledc_timer
     .speed_mode       = LEDC_MODE,
@@ -23,7 +23,7 @@ static ledc_timer_config_t g_PWM_timer = { // config ledc_timer
 };
 
 static xSteering_manager_t g_xSteering_manager = { // structure returned to app
-    .steeringNum  =  STEERING_NUM,
+    .steering_totalNum = STEERING_NUM, //total number of steering gears
     .pPWM_timer   =  &g_PWM_timer,
     .config_arr   =  g_Config_arr,
     .steering_arr =  g_Steering_arr,
@@ -93,7 +93,7 @@ static void vSteering_channel_init(void)
     for (int i = 0; i < STEERING_NUM; i++)
     {
         ESP_ERROR_CHECK(ledc_channel_config(&g_xSteering_manager.config_arr[i]));
-        g_xSteering_manager.steering_arr[i].steering_name = i + 1;
+        g_xSteering_manager.steering_arr[i].steering_name = i;
         g_xSteering_manager.steering_arr[i].angle_now   = STEERING_DEFAULT_ANGLE;
         g_xSteering_manager.steering_arr[i].angle_scope = STEERING_ANGLE_SCOPE;
         g_xSteering_manager.steering_arr[i].channel     = g_xSteering_manager.config_arr[i].channel;
@@ -112,14 +112,12 @@ static void vSteering_Highlevel_updata(const uint32_t steering_number,
                                        const uint32_t *new_max_time,
                                        const uint32_t *new_min_time) 
 {
-    xSteering_arguments_t *parguments = &g_xSteering_manager.steering_arr[steering_number - 1];
+    xSteering_arguments_t *parguments = &g_xSteering_manager.steering_arr[steering_number];
 
-    if (new_min_time && !new_max_time)  
+    if (new_min_time)  
         parguments->min_high_time = *new_min_time;
-    else if (!new_min_time && new_max_time)
+    if (new_max_time)
         parguments->max_high_time = *new_max_time;
-    else
-        return;
 
     uint32_t total_duty = 2;
     float temp_AngleBaseDutyNum;
@@ -149,18 +147,21 @@ xSteering_manager_t* vSteering_init(void)
     // Use up to five steering gears
     vSteering_channel_init();
 
-    vSteering_DefaultAngle();
+    vSteering_ResetAngle();
 
     return &g_xSteering_manager;
 }
 // return argument by steering number
 xSteering_arguments_t* xSteering_GetArgumentbyNum(uint32_t steeringNum)
 {
-    return &g_xSteering_manager.steering_arr[steeringNum - 1];
+    if ((steeringNum + 1) > g_xSteering_manager.steering_totalNum)
+        return NULL;
+    else
+        return &g_xSteering_manager.steering_arr[steeringNum];
 }
 
 /* Angle converted to duty value */
-static uint32_t iAngleToDutyNum(xSteering_arguments_t *parguments, const uint32_t angle)
+static uint32_t iAngleToDutyNum(xSteering_arguments_t *parguments, const uint16_t angle)
 {
     uint32_t DutyNum;
 
@@ -173,7 +174,7 @@ static uint32_t iAngleToDutyNum(xSteering_arguments_t *parguments, const uint32_
 }
 
 //changing the PWM duty cycle by angle
-void vSteering_ChangeAngle(xSteering_arguments_t *parguments, const uint32_t angle)
+void vSteering_ChangeAngle(xSteering_arguments_t *parguments, const uint16_t angle)
 {
     parguments->angle_now = angle;
 
@@ -190,26 +191,26 @@ void vSteering_ChangeDutyNum(xSteering_arguments_t *parguments, const uint32_t d
 }
 
 // steering gear returns to the default angle
-void vSteering_DefaultAngle(void)
+void vSteering_ResetAngle(void)
 {
     for (int i = 0; i < STEERING_NUM; i++)
         vSteering_ChangeAngle(&g_xSteering_manager.steering_arr[i], STEERING_DEFAULT_ANGLE);
     ESP_LOGI(TAG, "[default angle!]");
 }
 
-void vSteering_Calibration(const uint32_t sreeringname, const uint32_t timeNum, const bool High_or_Low)
+void vSteering_Calibration(const uint16_t sreeringname, const uint32_t timeNum, const bool High_or_Low)
 {
-    vSteering_DefaultAngle();
+    vSteering_ResetAngle();
     if (High_or_Low)
     {
         // updata max_high_time
         vSteering_Highlevel_updata(sreeringname, &timeNum, NULL);
-        vSteering_ChangeAngle(&g_xSteering_manager.steering_arr[sreeringname - 1], g_xSteering_manager.steering_arr[sreeringname - 1].angle_scope);
+        vSteering_ChangeAngle(&g_xSteering_manager.steering_arr[sreeringname], g_xSteering_manager.steering_arr[sreeringname].angle_scope);
     } else 
     {
         // updata min_high_time
         vSteering_Highlevel_updata(sreeringname, NULL, &timeNum);
-        vSteering_ChangeAngle(&g_xSteering_manager.steering_arr[sreeringname - 1], 0);
+        vSteering_ChangeAngle(&g_xSteering_manager.steering_arr[sreeringname], 0);
     }
     ESP_LOGI(TAG, "[Calibration set!]");
 }

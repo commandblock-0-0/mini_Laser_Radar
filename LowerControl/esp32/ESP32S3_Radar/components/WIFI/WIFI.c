@@ -35,8 +35,8 @@
 
 static wifi_config_t g_wifi_config = {
         .sta = {
-            .ssid = ESP_DEFAULT_WIFI_SSID,
-            .password = ESP_DEFAULT_WIFI_PASS,
+            .ssid = "xxx",//ESP_DEFAULT_WIFI_SSID,
+            .password = "123",//ESP_DEFAULT_WIFI_PASS,
             /* Authmode threshold resets to WPA2 as default if password matches WPA2 standards (pasword len => 8).
              * If you want to connect the device to deprecated WEP/WPA networks, Please set the threshold value
              * to WIFI_AUTH_WEP/WIFI_AUTH_WPA_PSK and set the password with length and format matching to
@@ -64,6 +64,8 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "wifi station";
 
 static int s_retry_num = 0;
+
+SemaphoreHandle_t smartconfig_Semaphore = NULL;
 
 static void smartconfig_task(void * parm);
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -112,17 +114,25 @@ esp_err_t wifi_init_sta(void)
 
     /* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
      * happened. */
-    if (bits & WIFI_CONNECTED_BIT) {
+    if (bits & WIFI_CONNECTED_BIT) { //successed
         ESP_LOGI(TAG, "connected to ap SSID:%s",
                  g_wifi_config.sta.ssid);
         return ESP_OK;
-    } else if (bits & WIFI_FAIL_BIT) {
+    } else if (bits & WIFI_FAIL_BIT) { // start smartconfig
         ESP_LOGW(TAG, "Failed to connect to SSID:%s",
-                 g_wifi_config.sta.password);
+                 g_wifi_config.sta.ssid);
         ESP_LOGW(TAG, "Start SmartConfig!");
-        xTaskCreate(smartconfig_task, "smartconfig_task", 4096, NULL, 12, NULL);
-        return ESP_ERR_NOT_FOUND;
-    } else {
+        smartconfig_Semaphore = xSemaphoreCreateBinary();
+        TaskHandle_t smart_task_Handle;
+        xTaskCreatePinnedToCore(smartconfig_task, "smartconfig_task", 4096, NULL, 12, &smart_task_Handle, 0);
+        if (xSemaphoreTake(smartconfig_Semaphore, portMAX_DELAY) == pdTRUE) // wait smartconfig
+            return ESP_OK;
+        else {
+            vTaskDelete(smart_task_Handle);
+            esp_smartconfig_stop();
+            return ESP_ERR_NOT_FOUND;
+        }
+    } else { // other error
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
         return ESP_FAIL;
     }
@@ -139,15 +149,15 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(TAG,"connect to the AP fail");
             if (s_retry_num < ESP_WIFI_MAXIMUM_RETRY) {
                 //user config SSID and PASSWORD
-                esp_wifi_connect();
                 s_retry_num++;
                 ESP_LOGI(TAG, "retry to connect to the AP");
+                esp_wifi_connect();
             } else if (s_retry_num < ESP_WIFI_MAXIMUM_RETRY * 2) {
                 //if over max_try_num, use config in NVS to try ESP_WIFI_MAXIMUM_RETRY
                 if (ESP_OK == NVSread_to_wifi_config("WiFi_cfg")) {
-                    esp_wifi_connect();
                     s_retry_num++;
                     ESP_LOGI(TAG, "retry to connect to the AP by NVSconfig");
+                    esp_wifi_connect();
                 }
                 else {
                     ESP_LOGW(TAG, "NVS config error!");
@@ -178,11 +188,12 @@ static void event_handler(void* arg, esp_event_base_t event_base,
             ESP_LOGI(TAG, "Found channel");
         }
         if (event_id == SC_EVENT_SEND_ACK_DONE) {
-            xEventGroupSetBits(s_wifi_event_group, WIFI_SMART_CONFIG_BIT);
+            ESP_LOGI(TAG, "sent ACK");
         }
         if (event_id == SC_EVENT_GOT_SSID_PSWD) {
             ESP_LOGI(TAG, "Got SSID and password");
             NVSupdate_data("WiFi_cfg", (smartconfig_event_got_ssid_pswd_t*)event_data);
+            xEventGroupSetBits(s_wifi_event_group, WIFI_SMART_CONFIG_BIT);
             esp_wifi_connect();
         }
     }
@@ -191,7 +202,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 static void smartconfig_task(void * parm)
 {
     EventBits_t uxBits;
-    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH_V2) );
+    ESP_ERROR_CHECK( esp_smartconfig_set_type(SC_TYPE_ESPTOUCH) );
     smartconfig_start_config_t cfg = SMARTCONFIG_START_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_esptouch_set_timeout(255));
     ESP_ERROR_CHECK(esp_smartconfig_start(&cfg));
@@ -205,8 +216,9 @@ static void smartconfig_task(void * parm)
         }
         if(uxBits & WIFI_SMART_CONFIG_BIT) {
             ESP_LOGI(TAG, "smartconfig over");
-            esp_smartconfig_stop();
-            vTaskDelete(NULL);
+            //esp_smartconfig_stop();
+            xSemaphoreGive(smartconfig_Semaphore);
+            //vTaskDelete(NULL);
         }
     }
 }

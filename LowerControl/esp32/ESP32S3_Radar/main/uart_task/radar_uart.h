@@ -8,7 +8,7 @@
 #define TX_BUF_SIZE 1024
 #define RADAR_MAX_COMMAND_LEN 10
 
-typedef void(* pRadar_UART_DataHand_t)(const uart_port_t uart_num, char* dtmp, size_t size);
+typedef void(* pRadar_UART_DataHand_t)(const uart_port_t uart_num, uint8_t* dtmp, size_t size);
 
 typedef enum {
     RADAR_SUSPEND = 1,//radar does not reset the status and stops working 
@@ -37,8 +37,10 @@ typedef struct xRadar_UART_t{
 } xRadar_UART_t;
 
 
+xRadar_UART_t* radar_UART_Run(UBaseType_t uxPriority, TaskFunction_t UART_receive_task, pRadar_UART_DataHand_t Radar_UART_DataHand);/* start uart */
+xRadar_UART_t* radar_UART_Find_by_Num(uart_port_t uart_num);/* find UART structures by uart_num */
+esp_err_t radar_UART_ChangeFunbyNum(uart_port_t uart_num, pRadar_UART_DataHand_t UART_DataHand);/* Change the processing function */
+
 void Radar_uart_default_receive_task(void *pvParameters);
-xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task, 
-                              pRadar_UART_DataHand_t Radar_UART_DataHand);
 
 #endif

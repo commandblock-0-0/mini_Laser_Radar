@@ -6,7 +6,7 @@
 #include "esp_log.h"
 #include "sdkconfig.h"
 #include "radar_manager.h"
-#include "uart.h"
+#include "radar_uart.h"
 #include "steering_control.h"
 
 
@@ -16,8 +16,13 @@ static esp_err_t vRadar_UART_Device_Exit(uart_port_t uart_num);
 
 static xRadar_UART_t* g_Uart_listHand = NULL;
 
-//init function, according to the kconfig file
-//app is not visible
+/**
+ * @brief       Init UART
+ * @param       void
+ * 
+ * @retval      NULL   : uart number is invalid
+ * @retval      other  : link header connecting all UART items
+ */
 static xRadar_UART_t* vRadar_UART_Device_Init(void)
 {
     xRadar_UART_t* uart_p = NULL; 
@@ -117,8 +122,13 @@ static xRadar_UART_t* vRadar_UART_Device_Init(void)
     return Uart_listHand;
 }
 
-//exit function
-//app is not visible
+/**
+ * @brief       Exit UART
+ * @param       uart_num : uart number
+ * 
+ * @retval      ESP_ERR_NOT_FOUND   : uart number is invalid
+ * @retval      ESP_OK              : success
+ */
 static esp_err_t vRadar_UART_Device_Exit(const uart_port_t uart_num)
 {
     xRadar_UART_t* pfirst_note = g_Uart_listHand;
@@ -156,91 +166,30 @@ static esp_err_t vRadar_UART_Device_Exit(const uart_port_t uart_num)
     return ESP_ERR_NOT_FOUND;
 }
 
-//Convert commands to numeric strings
-static void vCommandDecode(char* command, int32_t* command_code)
+/**
+ * @brief       default processing function after receiving valid data, 
+ * @param       uart_num : uart number
+ * @param       dtmp     : received data
+ * @param       size     : data size
+ * 
+ * @retval      void
+ */
+static void vpRadar_UART_default_DataHand(const uart_port_t uart_num, uint8_t* dtmp, size_t size)
 {
-    /* All non-numbers parameters are converted to zero */
-    uint32_t count = 1;
-    char *token;
-    char *rest = command;
-    while ((token = strtok_r(NULL, " ", &rest)))
-    {
-        command_code[count] = atoi(token);
-        count++;
-        if (count == (RADAR_MAX_COMMAND_LEN + 1))
-            break;
-    }
-    command_code[0] = count - 1;// Number of instructions for this command
+    /* The radar is not activated, no operation will be performed */
+    uart_write_bytes(uart_num, "Radar not activated", sizeof("Radar not activated"));
 }
 
-static void vpRadar_UART_default_DataHand(const uart_port_t uart_num, char* command, size_t size)
-{
-    /*
-     *default function to process data
-     *the data sent should start with a command, followed by several data, separated by spaces :
-     *<command> [data 0] [data 1] ...
-     */
-    char* str;
-    int32_t Command_code[RADAR_MAX_COMMAND_LEN + 1];
-    vCommandDecode(command, Command_code);//convert commands to numeric strings
-
-    switch(Command_code[1]) { //Parse the first substring
-        // stop command
-        case RADAR_SUSPEND:
-            ESP_LOGI(TAG, "Radar Suspend.");
-            str = "Radar Suspend !\n";
-            uart_write_bytes(uart_num, str, strlen(str));
-            // To suspend runningtask
-            vRadarManager_Task_Suspend();
-            break;
-        // run command
-        case RADAR_RUN:
-            ESP_LOGI(TAG, "Radar start.");
-            str = "Radar start !\n";
-            uart_write_bytes(uart_num, str, strlen(str));
-            // To ready runningtask
-            vRadarManager_Task_run();
-            break;
-        // choose mode command
-        case RADAR_MOD: 
-            ESP_LOGI(TAG, "Choose radar mode.");
-            str = "Choose radar mode !\n";
-            uart_write_bytes(uart_num, str, strlen(str));
-            // To suspend runningtask
-            break;
-        // start angle calibration command
-        case RADAR_ANGLE_CALIBRATION: 
-            // <RADAR_MOD> <sreeringNum> <timeNum> <H/L>
-            ESP_LOGI(TAG, "Radar calibration mode.");
-            vRadarManager_enable_calibration(uart_num, Command_code);
-            break;
-        //reset the status and stops
-        case RADAR_RESET:
-            ESP_LOGI(TAG, "Radar stop and reset action.");
-            str = "Radar stop and reset action !\n";
-            uart_write_bytes(uart_num, str, strlen(str));
-            vRadarManager_Task_Stop();
-            break;
-        //specify the angle of a single steering gear
-        case SPECIFY_ANGLE:
-            // <RADAR_MOD> <sreeringNum> <angle>
-            ESP_LOGI(TAG, "Specify Angle.");
-            str = "Specify Angle !\n";
-            uart_write_bytes(uart_num, str, strlen(str));
-            vRadarManager_Specify_Angle(uart_num, Command_code);
-            break;
-        // other
-        default:
-            ESP_LOGW(TAG, "Command is not available !");
-            str = "Command is not available !\n";
-            uart_write_bytes(uart_num, str, strlen(str));
-            break;
-    }
-}
-
-// Used by app 
-// Run function 
-xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task, 
+/**
+ * @brief       Start UART
+ * @param       UART_receive_task      : provide uart task, in NULL using default function, Task priority is 12
+ * @param       Radar_UART_DataHand    : processing function after receiving valid data, in NULL using default function
+ * 
+ * @retval      NULL  : init failed
+ * @retval      other : link header connecting all UART items
+ */
+xRadar_UART_t* radar_UART_Run(UBaseType_t uxPriority,
+                              TaskFunction_t UART_receive_task, 
                               pRadar_UART_DataHand_t Radar_UART_DataHand)
 {
     if (g_Uart_listHand)
@@ -262,26 +211,75 @@ xRadar_UART_t* radar_UART_Run(TaskFunction_t UART_receive_task,
         else
             pfirse_note->DateHand_fun = vpRadar_UART_default_DataHand;
         // build task name
-        strcpy(task_name, "radar_uart$_event_task");
+        strcpy(task_name, "radar_uart$_event_task\0");
         for (int i = 0; i < name_len; i++)
         {
             if (task_name[i] == '$')
             {    
-                task_name[i] = 0x30 + pfirse_note->uart_num;
+                task_name[i] = 0x30 + pfirse_note->uart_num;//Determine the task name for each UART
                 break;
             }
         }
         // can provide your own receive task,  if provide NULL, use the default task
         if (UART_receive_task)
-            xTaskCreatePinnedToCore(UART_receive_task, "radar_uart_event_task", pfirse_note->usStackDepth, 
-                            pfirse_note, 12, &(pfirse_note->handle_receive_task), 0);
+            xTaskCreatePinnedToCore(UART_receive_task, task_name, pfirse_note->usStackDepth, 
+                            pfirse_note, uxPriority, &(pfirse_note->handle_receive_task), 0);
         else
-            xTaskCreatePinnedToCore(Radar_uart_default_receive_task, "radar_uart_event_task", pfirse_note->usStackDepth, 
-                            pfirse_note, 12, &(pfirse_note->handle_receive_task), 0);
+            xTaskCreatePinnedToCore(Radar_uart_default_receive_task, task_name, 10000,//pfirse_note->usStackDepth, 
+                            pfirse_note, uxPriority, &(pfirse_note->handle_receive_task), 0);
         ESP_LOGI(TAG, "[%s is running!]", task_name);
         pfirse_note = pfirse_note->ptNext;
     }
     ESP_LOGI(TAG, "[runing!]");
 
     return g_Uart_listHand;
+}
+
+/**
+ * @brief       find UART structures by uart_num
+ * @param       uart_num      : uart number
+ * 
+ * @retval      NULL  : no find
+ * @retval      other : Structure found
+ */
+xRadar_UART_t* radar_UART_Find_by_Num(const uart_port_t uart_num)
+{
+    xRadar_UART_t* pfirse_note = g_Uart_listHand;
+    while (pfirse_note)
+    {
+        if(pfirse_note->uart_num == uart_num)
+            return pfirse_note;
+        else
+            pfirse_note = pfirse_note->ptNext;
+    }
+    return NULL;
+}
+
+/**
+ * @brief       Change the processing function
+ * @param       uart_num      : uart number that needs to be changed
+ * @param       UART_DataHand : processing function
+ * 
+ * @retval      ESP_OK  : success
+ * @retval      ESP_FAIL: failure
+ */
+esp_err_t radar_UART_ChangeFunbyNum(const uart_port_t uart_num, pRadar_UART_DataHand_t UART_DataHand)
+{
+    xRadar_UART_t* UART_note;
+
+    if (!uart_is_driver_installed(uart_num))
+    {
+        ESP_LOGW(TAG,"UART %d no install!", uart_num);
+        return ESP_FAIL;
+    }
+
+    UART_note = radar_UART_Find_by_Num(uart_num);
+    if (!UART_note)
+        return ESP_FAIL;
+    else
+    {
+        uart_flush_input(UART_note->uart_num);
+        UART_note->DateHand_fun = UART_DataHand;
+        return ESP_OK;
+    }
 }
